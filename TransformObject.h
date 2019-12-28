@@ -1,11 +1,13 @@
 //
-// Created by ParthSchool on 12/20/2019.
+// Created by Parth on 12/20/2019.
 //
 
 #ifndef PHYSICS_ENGINE_TRANSFORMOBJECT_H
 #define PHYSICS_ENGINE_TRANSFORMOBJECT_H
 
 #include "polygons/Polygon.h"
+#include "polygons/Circle.h"
+#include "polygons/Rectangle.h"
 
 class TransformObject {
 
@@ -16,7 +18,9 @@ class TransformObject {
 
         float centerOfMass[2];
 
-        Polygon polygon;
+        Polygon* polygon;
+
+        void calculateCenterOfMass();
 
     public:
         float rotation = 0.0;
@@ -26,18 +30,19 @@ class TransformObject {
         bool hasPhysics;
 
         TransformObject();
-        TransformObject(Polygon objectShape);
-        void setPosition(const float *newPosition);
+        TransformObject(Polygon* shape);
+        void setPosition(float x, float y);
         float* getPosition();
-        void setVelocity(const float *newVelocity);
+        void setVelocity(float x, float y);
         float* getVelocity();
-        void setAcceleration(const float *newAcceleration);
+        void setAcceleration(float x, float y);
         float* getAcceleration();
+        Polygon* getPolygon();
         void addPhysics();
         void addForce(const float force[2]);
         void addForceAtPosition(float forcePosition[2], float force[2]);
         void addTorque(float torquePosition[2], float torque[2]);
-        void calculateCenterOfMass();
+        void setCenterOfMass(float x, float y);
         float* getCenterOfMass();
 };
 

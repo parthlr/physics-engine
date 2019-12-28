@@ -1,5 +1,5 @@
 //
-// Created by ParthSchool on 12/23/2019.
+// Created by Parth on 12/23/2019.
 //
 
 #ifndef PHYSICS_ENGINE_CIRCLE_H
@@ -18,6 +18,7 @@ class Circle : public Polygon {
         float radius;
 
         Circle(float circleRadius);
+        virtual std::string getType();
 
 };
 

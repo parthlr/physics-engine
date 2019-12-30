@@ -13,8 +13,8 @@ class Physics {
 
     private:
         static float gravity[2];
-        static void calculateProjection(Rectangle* rectangle, float axisX, float axisY, float &minProjection, float &maxProjection);
-        static bool rectangleRectangleCollision(Rectangle* rectangle1, Rectangle* rectangle2);
+        static bool rectangleCircleCollision(Rectangle* rectangle, Circle* circle);
+        static bool circleCircleCollision(Circle* circle1, Circle* circle2);
 
         static std::array<float, 2> getSupportPoint(Rectangle* rectangle, float axisX, float axisY);
         static float getPenetration(int &faceIndex, Rectangle* rectangle1, Rectangle* rectangle2);

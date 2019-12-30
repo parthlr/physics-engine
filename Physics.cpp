@@ -41,47 +41,30 @@ void Physics::updateRotation(TransformObject &transformObject) {
     transformObject.getPolygon()->setVertices(rotation);
 }
 
-void Physics::calculateProjection(Rectangle* rectangle, float axisX, float axisY, float &minProjection, float &maxProjection) {
-    float axisMagnitude = sqrt(pow(axisX, 2) + pow(axisY, 2));
-    float axisUnit[2] = {axisX / axisMagnitude, axisY / axisMagnitude};
+bool Physics::rectangleCircleCollision(Rectangle* rectangle, Circle* circle) {
+    float maxProjection = -FLT_MAX;
     float* vertices = rectangle->getVertices();
-    minProjection = ((vertices[0]) * axisX) + ((vertices[1]) * axisY);
-    maxProjection = ((vertices[0]) * axisX) + ((vertices[1]) * axisY);
-    int vertexIndex = 3;
-    for (int i = 1; i < rectangle->numberOfVertices; i++) {
-        float projection = ((vertices[vertexIndex]) * axisX) + ((vertices[vertexIndex + 1]) * axisY);
-        minProjection = std::min(projection, minProjection);
-        maxProjection = std::max(projection, maxProjection);
+    float boxCircle[2] = {circle->getPosition()[0] - rectangle->getPosition()[0], circle->getPosition()[1]- rectangle->getPosition()[1]};
+    float boxCircleLength = sqrt(pow(boxCircle[0], 2) + pow(boxCircle[1], 2));
+    float boxCircleUnit[2] = {boxCircle[0] / boxCircleLength, boxCircle[1] / boxCircleLength};
+    int vertexIndex = 0;
+    for (int i = 0; i < rectangle->numberOfVertices; i++) {
+        float projection = ((vertices[vertexIndex] - rectangle->getPosition()[0]) * boxCircleUnit[0]) + ((vertices[vertexIndex + 1] - rectangle->getPosition()[1]) * boxCircleUnit[1]);
+        if (projection > maxProjection) {
+            maxProjection = projection;
+        }
         vertexIndex += 3;
     }
-}
-
-bool Physics::rectangleRectangleCollision(Rectangle* rectangle1, Rectangle* rectangle2) {
-    std::vector<std::array<float, 2>> normals1 = rectangle1->getNormals();
-    std::vector<std::array<float, 2>> normals2 = rectangle2->getNormals();
-    for (int i = 0; i < normals1.size(); i++) {
-        float rect1MinProjection;
-        float rect1MaxProjection;
-        float rect2MinProjection;
-        float rect2MaxProjection;
-        calculateProjection(rectangle1, normals1[i][0], normals1[i][1], rect1MinProjection, rect1MaxProjection);
-        calculateProjection(rectangle2, normals1[i][0], normals1[i][1], rect2MinProjection, rect2MaxProjection);
-        if (rect1MaxProjection < rect2MinProjection || rect1MinProjection > rect2MaxProjection) {
-            return false;
-        }
-    }
-    for (int i = 0; i < normals2.size(); i++) {
-        float rect1MinProjection;
-        float rect1MaxProjection;
-        float rect2MinProjection;
-        float rect2MaxProjection;
-        calculateProjection(rectangle1, normals2[i][0], normals2[i][1], rect1MinProjection, rect1MaxProjection);
-        calculateProjection(rectangle2, normals2[i][0], normals2[i][1], rect2MinProjection, rect2MaxProjection);
-        if (rect1MaxProjection < rect2MinProjection || rect1MinProjection > rect2MaxProjection) {
-            return false;
-        }
+    if (boxCircleLength - maxProjection - circle->radius >= 0) {
+        return false;
     }
     return true;
+}
+
+bool Physics::circleCircleCollision(Circle* circle1, Circle* circle2) {
+    float distanceVector[2] = {circle2->getPosition()[0] - circle1->getPosition()[0], circle2->getPosition()[1] - circle1->getPosition()[1]};
+    float distance = sqrt(pow(distanceVector[0], 2) + pow(distanceVector[1], 2));
+    return circle1->radius + circle2->radius >= distance;
 }
 
 std::array<float, 2> Physics::getSupportPoint(Rectangle* rectangle, float axisX, float axisY) {
@@ -132,6 +115,12 @@ bool Physics::collisionDetected(TransformObject object1, TransformObject object2
             return false;
         }
         return true;
+    } else if (object1.getPolygon()->getType() == "Rectangle" && object2.getPolygon()->getType() == "Circle") {
+        return rectangleCircleCollision((Rectangle*)object1.getPolygon(), (Circle*)object2.getPolygon());
+    } else if (object1.getPolygon()->getType() == "Circle" && object2.getPolygon()->getType() == "Rectangle") {
+        return rectangleCircleCollision((Rectangle*)object2.getPolygon(), (Circle*)object1.getPolygon());
+    } else if (object1.getPolygon()->getType() == "Circle" && object2.getPolygon()->getType() == "Circle") {
+        return circleCircleCollision((Circle*)object1.getPolygon(), (Circle*)object2.getPolygon());
     }
     return false;
 }

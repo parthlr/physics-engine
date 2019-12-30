@@ -1,13 +1,14 @@
 #include <iostream>
 #include "TransformObject.h"
 #include "polygons/Rectangle.h"
+#include "polygons/Circle.h"
 #include "Physics.h"
 
 int main() {
-    Rectangle rect1(1, 1);
-    Rectangle rect2(1, 1);
-    Polygon* poly1 = &rect1;
-    Polygon* poly2 = &rect2;
+    Circle circle(0.05);
+    Rectangle rect(1, 1);
+    Polygon* poly1 = &circle;
+    Polygon* poly2 = &rect;
     TransformObject obj1(poly1);
     TransformObject obj2(poly2);
     obj1.mass = 1.0;

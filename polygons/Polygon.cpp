@@ -46,8 +46,8 @@ void Polygon::setVertices(float angle) {
     for (int i = 0; i < numberOfVertices; i++) {
         float x = vertices[vertexIndex] - position[0];
         float y = vertices[vertexIndex + 1] - position[1];
-        vertices[vertexIndex] = (x * cos(angle)) - (y * sin(angle));
-        vertices[vertexIndex + 1] = (y * cos(angle)) + (x * sin(angle));
+        vertices[vertexIndex] = position[0] + (x * cos(angle)) - (y * sin(angle));
+        vertices[vertexIndex + 1] = position[1] + (y * cos(angle)) + (x * sin(angle));
         vertexIndex += 3;
     }
 }

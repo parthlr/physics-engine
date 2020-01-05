@@ -7,6 +7,7 @@
 #include <string>
 #include <cmath>
 #include <cfloat>
+#include <iostream>
 
 void Physics::updatePosition(TransformObject &transformObject) {
     float xVelocity = transformObject.getVelocity()[0] + (transformObject.getAcceleration()[0] * deltaTime);
@@ -38,11 +39,13 @@ void Physics::updateRotation(TransformObject &transformObject) {
 
     transformObject.angularVelocity = angularVelocity;
     transformObject.rotation = rotation;
+    transformObject.getPolygon()->rotation = rotation;
     transformObject.getPolygon()->setVertices(rotation);
 }
 
-bool Physics::rectangleCircleCollision(Rectangle* rectangle, Circle* circle) {
+bool Physics::rectangleCircleCollision(Rectangle* rectangle, Circle* circle, float &maxPenetration, int &faceIndex) {
     float maxProjection = -FLT_MAX;
+    int bestIndex = 0;
     float* vertices = rectangle->getVertices();
     float boxCircle[2] = {circle->getPosition()[0] - rectangle->getPosition()[0], circle->getPosition()[1]- rectangle->getPosition()[1]};
     float boxCircleLength = sqrt(pow(boxCircle[0], 2) + pow(boxCircle[1], 2));
@@ -52,12 +55,15 @@ bool Physics::rectangleCircleCollision(Rectangle* rectangle, Circle* circle) {
         float projection = ((vertices[vertexIndex] - rectangle->getPosition()[0]) * boxCircleUnit[0]) + ((vertices[vertexIndex + 1] - rectangle->getPosition()[1]) * boxCircleUnit[1]);
         if (projection > maxProjection) {
             maxProjection = projection;
+            bestIndex = i;
         }
         vertexIndex += 3;
     }
     if (boxCircleLength - maxProjection - circle->radius >= 0) {
         return false;
     }
+    maxPenetration = maxProjection;
+    faceIndex = bestIndex;
     return true;
 }
 
@@ -105,22 +111,71 @@ float Physics::getPenetration(int &faceIndex, Rectangle* rectangle1, Rectangle* 
     return bestDistance;
 }
 
-bool Physics::collisionDetected(TransformObject object1, TransformObject object2) {
+std::array<float, 2> Physics::calculateContactPoint(Rectangle* rectangle, Circle* circle, float maxPenetration, int faceIndex) {
+    std::array<float, 2> contactPoint;
+    float vertex[2] = {rectangle->getVertices()[faceIndex * 3], rectangle->getVertices()[(faceIndex * 3) + 1]};
+    float circleToVertex[2] = {vertex[0] - circle->getPosition()[0], vertex[1] - circle->getPosition()[1]};
+    if (pow(circleToVertex[0], 2) + pow(circleToVertex[1], 2) <= circle->radius) {
+        contactPoint = {vertex[0], vertex[1]};
+    } else {
+        float negativeNormal[2] = {-rectangle->getNormals()[faceIndex][0], -rectangle->getNormals()[faceIndex][1]};
+        float negativeNormalMagnitude = sqrt(pow(negativeNormal[0], 2) + pow(negativeNormal[1], 2));
+        float circleNormal[2] = {negativeNormal[0] / negativeNormalMagnitude, negativeNormal[1] / negativeNormalMagnitude};
+        contactPoint = {(circle->radius - maxPenetration) * circleNormal[0], (circle->radius - maxPenetration) * circleNormal[1]};
+    }
+    return contactPoint;
+}
+
+bool Physics::polygonCollisionDetected(TransformObject object1, TransformObject object2, float &maxPenetration1, float &maxPenetration2, int &faceIndex1, int &faceIndex2) {
     if (object1.getPolygon()->getType() == "Rectangle" && object2.getPolygon()->getType() == "Rectangle") {
-        int index1;
-        int index2;
-        float penetration1 = getPenetration(index1, (Rectangle*)object1.getPolygon(), (Rectangle*)object2.getPolygon());
-        float penetration2 = getPenetration(index2, (Rectangle*)object2.getPolygon(), (Rectangle*)object1.getPolygon());
-        if (penetration1 >= 0 || penetration2 >= 0) {
+        maxPenetration1 = getPenetration(faceIndex1, (Rectangle*)object1.getPolygon(), (Rectangle*)object2.getPolygon());
+        maxPenetration2 = getPenetration(faceIndex2, (Rectangle*)object2.getPolygon(), (Rectangle*)object1.getPolygon());
+        if (maxPenetration1 >= 0 || maxPenetration2 >= 0) {
             return false;
         }
         return true;
-    } else if (object1.getPolygon()->getType() == "Rectangle" && object2.getPolygon()->getType() == "Circle") {
-        return rectangleCircleCollision((Rectangle*)object1.getPolygon(), (Circle*)object2.getPolygon());
+    }
+    return false;
+}
+
+bool Physics::collisionDetected(TransformObject object1, TransformObject object2, float &maxPenetration, int &faceIndex) {
+    if (object1.getPolygon()->getType() == "Rectangle" && object2.getPolygon()->getType() == "Circle") {
+        return rectangleCircleCollision((Rectangle*)object1.getPolygon(), (Circle*)object2.getPolygon(), maxPenetration, faceIndex);
     } else if (object1.getPolygon()->getType() == "Circle" && object2.getPolygon()->getType() == "Rectangle") {
-        return rectangleCircleCollision((Rectangle*)object2.getPolygon(), (Circle*)object1.getPolygon());
+        return rectangleCircleCollision((Rectangle*)object2.getPolygon(), (Circle*)object1.getPolygon(), maxPenetration, faceIndex);
     } else if (object1.getPolygon()->getType() == "Circle" && object2.getPolygon()->getType() == "Circle") {
         return circleCircleCollision((Circle*)object1.getPolygon(), (Circle*)object2.getPolygon());
     }
     return false;
+}
+
+void Physics::resolveCollision(TransformObject &object1, TransformObject &object2, float penetration, int faceIndex) {
+    float distance[2] = {object2.getPosition()[0] - object1.getPosition()[0], object2.getPosition()[1] - object1.getPosition()[1]};
+    float distanceMagnitude = sqrt(pow(distance[0], 2) + pow(distance[1], 2));
+    float collisionNormal[2] = {distance[0] / distanceMagnitude, distance[1] / distanceMagnitude};
+
+    float relativeVelocity[2] = {object2.getVelocity()[0] - object1.getVelocity()[0], object2.getVelocity()[1] - object1.getVelocity()[1]};
+    float normalVelocity = (relativeVelocity[0] * collisionNormal[0]) + (relativeVelocity[1] * collisionNormal[1]);
+    float elasticity = std::min(object1.elasticity, object2.elasticity);
+    float impulseConstant = (-(1 + elasticity) * normalVelocity) / ((1 / object1.mass) + (1 / object2.mass));
+
+    float impulse[2] = {impulseConstant * collisionNormal[0], impulseConstant * collisionNormal[1]};
+    object1.setVelocity(object1.getVelocity()[0] - ((1 / object1.mass) * impulse[0]), object1.getVelocity()[1] - ((1 / object1.mass) * impulse[1]));
+    object2.setVelocity(object2.getVelocity()[0] + ((1 / object2.mass) * impulse[0]), object2.getVelocity()[1] + ((1 / object2.mass) * impulse[1]));
+
+    std::array<float, 2> contactPoint;
+    if (object1.getPolygon()->getType() == "Rectangle" && object2.getPolygon()->getType() == "Circle") {
+        contactPoint = calculateContactPoint((Rectangle*)object1.getPolygon(), (Circle*)object2.getPolygon(), penetration, faceIndex);
+    } else if (object1.getPolygon()->getType() == "Circle" && object2.getPolygon()->getType() == "Rectangle") {
+        contactPoint = calculateContactPoint((Rectangle*)object2.getPolygon(), (Circle*)object1.getPolygon(), penetration, faceIndex);
+    }
+    std::cout << "Contact X: " << contactPoint[0] << " Contact Y: " << contactPoint[1] << "\n";
+    float r1[2] = {contactPoint[0] - object1.getPosition()[0], contactPoint[1] - object1.getPosition()[1]};
+    float r2[2] = {contactPoint[0] - object2.getPosition()[0], contactPoint[1] - object2.getPosition()[1]};
+
+    float contactImpulse1 = (r1[0] * impulse[1]) - (r1[1] * impulse[0]);
+    float contactImpulse2 = (r2[0] * impulse[1]) - (r2[1] * impulse[0]);
+
+    object1.angularVelocity -= (1 / object1.getPolygon()->getMomentOfInertia()) * contactImpulse1;
+    object2.angularVelocity += (1 / object2.getPolygon()->getMomentOfInertia()) * contactImpulse2;
 }

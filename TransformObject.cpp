@@ -7,11 +7,13 @@
 
 TransformObject::TransformObject() {
     hasPhysics = false;
+    elasticity = 1.0;
     calculateCenterOfMass();
 }
 
 TransformObject::TransformObject(Polygon* shape) {
     polygon = shape;
+    elasticity = 1.0;
     calculateCenterOfMass();
 }
 
@@ -49,6 +51,7 @@ Polygon* TransformObject::getPolygon() {
 
 void TransformObject::addPhysics() {
     hasPhysics = true;
+    mass = 1.0;
 }
 
 void TransformObject::addForce(const float force[2]) {

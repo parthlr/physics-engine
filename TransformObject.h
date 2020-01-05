@@ -27,6 +27,7 @@ class TransformObject {
         float angularVelocity = 0.0;
         float angularAcceleration = 0.0;
         float mass = -1.0;
+        float elasticity;
         bool hasPhysics;
 
         TransformObject();

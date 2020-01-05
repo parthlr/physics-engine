@@ -28,7 +28,7 @@ void Circle::initializeVertices() {
 }
 
 void Circle::calculateMomentOfInertia() {
-    momentOfInertia = M_PI * pow(radius, 4) / 4;
+    momentOfInertia = 0.5 * mass * pow(radius, 2);
 }
 
 std::string Circle::getType() {

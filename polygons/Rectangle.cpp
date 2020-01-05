@@ -3,6 +3,7 @@
 //
 
 #include "Rectangle.h"
+#include <cmath>
 
 Rectangle::Rectangle(float rectangleWidth, float rectangleHeight) {
     width = rectangleWidth;
@@ -45,7 +46,7 @@ void Rectangle::calculateNormals() {
 }
 
 void Rectangle::calculateMomentOfInertia() {
-
+    momentOfInertia = (1.0 / 12.0) * mass * (pow(height, 2) + pow(width, 2));
 }
 
 void Rectangle::setVertices(float dx, float dy) {

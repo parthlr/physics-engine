@@ -26,6 +26,8 @@ class Polygon {
 
     public:
         int numberOfVertices;
+        float rotation;
+        float mass = 1.0;
 
         Polygon();
 

@@ -20,7 +20,6 @@ class Polygon {
         std::vector<std::array<float, 2>> normals;
         float momentOfInertia;
         float bounds[4];
-
         void initializeVertices();
         void calculateMomentOfInertia();
 
@@ -28,6 +27,9 @@ class Polygon {
         int numberOfVertices;
         float rotation;
         float mass = 1.0;
+
+        unsigned int VBO;
+        unsigned int VAO;
 
         Polygon();
 

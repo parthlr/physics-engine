@@ -4,14 +4,16 @@
 
 #include <cmath>
 #include "TransformObject.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
-TransformObject::TransformObject() {
+TransformObject::TransformObject(Shader objectShader) : shader(objectShader) {
     hasPhysics = false;
     elasticity = 1.0;
     calculateCenterOfMass();
 }
 
-TransformObject::TransformObject(Polygon* shape) {
+TransformObject::TransformObject(Polygon* shape, Shader objectShader) : shader(objectShader) {
     polygon = shape;
     elasticity = 1.0;
     calculateCenterOfMass();
@@ -21,6 +23,16 @@ void TransformObject::setPosition(float x, float y) {
     position[0] = x;
     position[1] = y;
     polygon->setPosition(x, y);
+    shader.use();
+    glm::mat4 transform = glm::mat4(1.0f);
+    transform = glm::translate(transform, glm::vec3(x, y, 0.0f));
+    shader.setMat4("transform", transform);
+    glBindVertexArray(polygon->VAO);
+    if (polygon->getType() == "Circle") {
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 150);
+    } else if (polygon->getType() == "Rectangle") {
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    }
 }
 
 float* TransformObject::getPosition() {

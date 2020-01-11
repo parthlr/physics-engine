@@ -4,17 +4,26 @@
 
 #include "Rectangle.h"
 #include <cmath>
+#include <glad/glad.h>
 
 Rectangle::Rectangle(float rectangleWidth, float rectangleHeight) {
     width = rectangleWidth;
     height = rectangleHeight;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    glBindVertexArray(VAO);
     initializeVertices();
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
     calculateNormals();
     calculateMomentOfInertia();
 }
 
 void Rectangle::initializeVertices() {
     numberOfVertices = 4;
+    float glVertices[numberOfVertices * 3];
+    unsigned int glIndices[6] = {0, 1, 3, 1, 2, 3};
 
     vertices.push_back(-0.1 * (width / 2));
     vertices.push_back(0.1 * (height / 2));
@@ -31,6 +40,16 @@ void Rectangle::initializeVertices() {
     vertices.push_back(-0.1 * (width / 2));
     vertices.push_back(-0.1 * (height / 2));
     vertices.push_back(0.0);
+
+    for (int i = 0; i < vertices.size(); i++) {
+        glVertices[i] = vertices[i];
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(glVertices), glVertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(glIndices), glIndices, GL_STATIC_DRAW);
 }
 
 void Rectangle::calculateNormals() {

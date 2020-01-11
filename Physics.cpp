@@ -43,6 +43,87 @@ void Physics::updateRotation(TransformObject &transformObject) {
     transformObject.getPolygon()->setVertices(rotation);
 }
 
+void Physics::getMinMaxProjection(Rectangle* rectangle, float axisX, float axisY, float &minProjection, float &maxProjection, int &minIndex, int &maxIndex) {
+    minProjection = FLT_MAX;
+    maxProjection = -FLT_MAX;
+    float* vertices = rectangle->getVertices();
+    int vertexIndex = 0;
+    for (int i = 0; i < rectangle->numberOfVertices; i++) {
+        float projection = (vertices[vertexIndex] * axisX) + (vertices[vertexIndex + 1] * axisY);
+        if (projection > maxProjection) {
+            maxProjection = projection;
+            maxIndex = i;
+        } else if (projection < minProjection) {
+            minProjection = projection;
+            minIndex = i;
+        }
+        vertexIndex += 3;
+    }
+}
+
+bool Physics::rectanglerectangleCollision(Rectangle* rectangle1, Rectangle* rectangle2, float &minOverlap, std::array<float, 2> &contactPoint, std::array<float, 2> &axis) {
+    std::vector<std::array<float, 2>> normals1 = rectangle1->getNormals();
+    std::vector<std::array<float, 2>> normals2 = rectangle2->getNormals();
+    minOverlap = FLT_MAX;
+    for (int i = 0; i < normals1.size(); i++) {
+        std::array<float, 2> normal = normals1[i];
+        float minProjection1;   int minIndex1;
+        float maxProjection1;   int maxIndex1;
+        float minProjection2;   int minIndex2;
+        float maxProjection2;   int maxIndex2;
+        getMinMaxProjection(rectangle1, normal[0], normal[1], minProjection1, maxProjection1, minIndex1, maxIndex1);
+        getMinMaxProjection(rectangle2, normal[0], normal[1], minProjection2, maxProjection2, minIndex2, maxIndex2);
+        if (maxProjection1 < minProjection2 || maxProjection2 < minProjection1) {
+            return false;
+        } else {
+            if (maxProjection1 > minProjection2) {
+                float overlap = maxProjection1 - minProjection2;
+                if (overlap < minOverlap) {
+                    minOverlap = overlap;
+                    axis = normal;
+                    contactPoint = {rectangle1->getVertices()[minIndex2 * 3], rectangle1->getVertices()[(minIndex2 * 3) + 1]};
+                }
+            } else if (maxProjection2 > minProjection1) {
+                float overlap = maxProjection2 - minProjection1;
+                if (overlap < minOverlap) {
+                    minOverlap = overlap;
+                    axis = normal;
+                    contactPoint = {rectangle2->getVertices()[maxIndex2 * 3], rectangle2->getVertices()[(maxIndex2 * 3) + 1]};
+                }
+            }
+        }
+    }
+    for (int i = 0; i < normals2.size(); i++) {
+        std::array<float, 2> normal = normals2[i];
+        float minProjection1;   int minIndex1;
+        float maxProjection1;   int maxIndex1;
+        float minProjection2;   int minIndex2;
+        float maxProjection2;   int maxIndex2;
+        getMinMaxProjection(rectangle1, normal[0], normal[1], minProjection1, maxProjection1, minIndex1, maxIndex1);
+        getMinMaxProjection(rectangle2, normal[0], normal[1], minProjection2, maxProjection2, minIndex2, maxIndex2);
+        if (maxProjection1 < minProjection2 || maxProjection2 < minProjection1) {
+            return false;
+        } else {
+            if (maxProjection1 > minProjection2) {
+                float overlap = maxProjection1 - minProjection2;
+                if (overlap < minOverlap) {
+                    minOverlap = overlap;
+                    axis = normal;
+                    contactPoint = {rectangle1->getVertices()[maxIndex1 * 3], rectangle1->getVertices()[(maxIndex1 * 3) + 1]};
+                }
+            } else if (maxProjection2 > minProjection1) {
+                float overlap = maxProjection2 - minProjection1;
+                if (overlap < minOverlap) {
+                    minOverlap = overlap;
+                    axis = normal;
+                    contactPoint = {rectangle2->getVertices()[minIndex1 * 3], rectangle2->getVertices()[(minIndex1 * 3) + 1]};
+                }
+            }
+        }
+    }
+    return true;
+}
+
 bool Physics::rectangleCircleCollision(Rectangle* rectangle, Circle* circle, float &maxPenetration, int &faceIndex) {
     float maxProjection = -FLT_MAX;
     int bestIndex = 0;
@@ -111,6 +192,19 @@ float Physics::getPenetration(int &faceIndex, Rectangle* rectangle1, Rectangle* 
     return bestDistance;
 }
 
+void Physics::resolveOverlap(TransformObject &object, float maxPenetration, int faceIndex) {
+    std::array<float, 2> normal = object.getPolygon()->getNormals()[faceIndex];
+    float normalUnit = sqrt(pow(normal[0], 2) + pow(normal[1], 2));
+    float MVT[2] = {(normal[0] / normalUnit) * maxPenetration, (normal[1] / normalUnit) * maxPenetration};
+    object.setPosition(object.getPosition()[0] + MVT[0], object.getPosition()[1] + MVT[1]);
+}
+
+void Physics::resolveOverlap(TransformObject &object, float minOverlap, std::array<float, 2> axis) {
+    float normalUnit = sqrt(pow(axis[0], 2) + pow(axis[1], 2));
+    float MVT[2] = {(axis[0] / normalUnit) * minOverlap, (axis[1] / normalUnit) * minOverlap};
+    object.setPosition(object.getPosition()[0] + MVT[0], object.getPosition()[1] + MVT[1]);
+}
+
 std::array<float, 2> Physics::calculateContactPoint(Rectangle* rectangle, Circle* circle, float maxPenetration, int faceIndex) {
     std::array<float, 2> contactPoint;
     float vertex[2] = {rectangle->getVertices()[faceIndex * 3], rectangle->getVertices()[(faceIndex * 3) + 1]};
@@ -126,14 +220,14 @@ std::array<float, 2> Physics::calculateContactPoint(Rectangle* rectangle, Circle
     return contactPoint;
 }
 
-bool Physics::polygonCollisionDetected(TransformObject object1, TransformObject object2, float &maxPenetration1, float &maxPenetration2, int &faceIndex1, int &faceIndex2) {
+std::array<float, 2> Physics::calculateContactPoint(Rectangle* rectangle, int faceIndex) {
+    std::array<float, 2> contactPoint = {rectangle->getVertices()[faceIndex * 3], rectangle->getVertices()[(faceIndex * 3) + 1]};
+    return contactPoint;
+}
+
+bool Physics::polygonCollisionDetected(TransformObject object1, TransformObject object2, float &minOverlap, std::array<float, 2> &contactPoint, std::array<float, 2> &axis) {
     if (object1.getPolygon()->getType() == "Rectangle" && object2.getPolygon()->getType() == "Rectangle") {
-        maxPenetration1 = getPenetration(faceIndex1, (Rectangle*)object1.getPolygon(), (Rectangle*)object2.getPolygon());
-        maxPenetration2 = getPenetration(faceIndex2, (Rectangle*)object2.getPolygon(), (Rectangle*)object1.getPolygon());
-        if (maxPenetration1 >= 0 || maxPenetration2 >= 0) {
-            return false;
-        }
-        return true;
+        return rectanglerectangleCollision((Rectangle*)object1.getPolygon(), (Rectangle*)object2.getPolygon(), minOverlap, contactPoint, axis);
     }
     return false;
 }
@@ -178,4 +272,32 @@ void Physics::resolveCollision(TransformObject &object1, TransformObject &object
 
     object1.angularVelocity -= (1 / object1.getPolygon()->getMomentOfInertia()) * contactImpulse1;
     object2.angularVelocity += (1 / object2.getPolygon()->getMomentOfInertia()) * contactImpulse2;
+}
+
+void Physics::resolvePolygonCollision(TransformObject &object1, TransformObject &object2, float minOverlap, std::array<float, 2> contactPoint, std::array<float, 2> axis) {
+    std::cout << "Contact X: " << contactPoint[0] << " Contact Y: " << contactPoint[1] << "\n";
+    std::cout << "Overlap: " << minOverlap << "\n";
+
+    float distance[2] = {object2.getPosition()[0] - object1.getPosition()[0], object2.getPosition()[1] - object1.getPosition()[1]};
+    float distanceMagnitude = sqrt(pow(distance[0], 2) + pow(distance[1], 2));
+    float collisionNormal[2] = {distance[0] / distanceMagnitude, distance[1] / distanceMagnitude};
+
+    float relativeVelocity[2] = {object2.getVelocity()[0] - object1.getVelocity()[0], object2.getVelocity()[1] - object1.getVelocity()[1]};
+    float normalVelocity = (relativeVelocity[0] * collisionNormal[0]) + (relativeVelocity[1] * collisionNormal[1]);
+    float elasticity = std::min(object1.elasticity, object2.elasticity);
+    float impulseConstant = (-(1 + elasticity) * normalVelocity) / ((1 / object1.mass) + (1 / object2.mass));
+
+    float impulse[2] = {impulseConstant * collisionNormal[0], impulseConstant * collisionNormal[1]};
+    object1.setVelocity(object1.getVelocity()[0] - ((1 / object1.mass) * impulse[0]), object1.getVelocity()[1] - ((1 / object1.mass) * impulse[1]));
+    object2.setVelocity(object2.getVelocity()[0] + ((1 / object2.mass) * impulse[0]), object2.getVelocity()[1] + ((1 / object2.mass) * impulse[1]));
+
+    float r1[2] = {contactPoint[0] - object1.getPosition()[0], contactPoint[1] - object1.getPosition()[1]};
+    float r2[2] = {contactPoint[0] - object2.getPosition()[0], contactPoint[1] - object2.getPosition()[1]};
+
+    float contactImpulse1 = (r1[0] * impulse[1]) - (r1[1] * impulse[0]);
+    float contactImpulse2 = (r2[0] * impulse[1]) - (r2[1] * impulse[0]);
+
+    object1.angularVelocity -= (1 / object1.getPolygon()->getMomentOfInertia()) * contactImpulse1;
+    object2.angularVelocity += (1 / object2.getPolygon()->getMomentOfInertia()) * contactImpulse2;
+
 }

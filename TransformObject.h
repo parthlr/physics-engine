@@ -8,6 +8,7 @@
 #include "polygons/Polygon.h"
 #include "polygons/Circle.h"
 #include "polygons/Rectangle.h"
+#include "shaders/Shader.h"
 
 class TransformObject {
 
@@ -30,8 +31,10 @@ class TransformObject {
         float elasticity;
         bool hasPhysics;
 
-        TransformObject();
-        TransformObject(Polygon* shape);
+        Shader shader;
+
+        TransformObject(Shader objectShader);
+        TransformObject(Polygon* shape, Shader objectShader);
         void setPosition(float x, float y);
         float* getPosition();
         void setVelocity(float x, float y);

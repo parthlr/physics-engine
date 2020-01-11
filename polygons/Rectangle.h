@@ -10,6 +10,9 @@
 
 class Rectangle : public Polygon {
 
+    private:
+        unsigned int EBO;
+
     protected:
         void calculateMomentOfInertia();
         void initializeVertices();

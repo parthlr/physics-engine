@@ -33,8 +33,10 @@ class TransformObject {
 
         Shader shader;
 
+        //TransformObject();
         TransformObject(Shader objectShader);
         TransformObject(Polygon* shape, Shader objectShader);
+        void setRotation(float angle);
         void setPosition(float x, float y);
         float* getPosition();
         void setVelocity(float x, float y);

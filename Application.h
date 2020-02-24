@@ -13,10 +13,14 @@ class Application {
         std::vector<TransformObject> objects;
 
     public:
-        void init();
+        int screenWidth = 1920;
+        int screenHeight = 1080;
+
+        Application();
+
         void execute();
 
-        void addObject(TransformObject object);
+        void addObject(TransformObject &object);
 
 };
 

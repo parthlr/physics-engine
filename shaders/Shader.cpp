@@ -9,6 +9,10 @@
 #include <sstream>
 #include <iostream>
 
+Shader::Shader() {
+
+}
+
 Shader::Shader(const GLchar* vertexPath, const GLchar* fragmentPath) {
     std::string vertexCode;
     std::string fragmentCode;

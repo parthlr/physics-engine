@@ -32,15 +32,13 @@ void Physics::updateRotation(TransformObject &transformObject) {
     float angularVelocity = transformObject.angularVelocity + (transformObject.angularAcceleration * deltaTime);
     float rotation = transformObject.rotation + (transformObject.angularVelocity * deltaTime);
 
-    if (rotation > 2 * M_PI)
+    /*if (rotation > 2 * M_PI)
         rotation -= (2 * M_PI);
     else if (rotation < 0)
-        rotation += (2 * M_PI);
+        rotation += (2 * M_PI);*/
 
     transformObject.angularVelocity = angularVelocity;
-    transformObject.rotation = rotation;
-    transformObject.getPolygon()->rotation = rotation;
-    transformObject.getPolygon()->setVertices(rotation);
+    transformObject.setRotation(rotation);
 }
 
 void Physics::getMinMaxProjection(Rectangle* rectangle, float axisX, float axisY, float &minProjection, float &maxProjection, int &minIndex, int &maxIndex) {
